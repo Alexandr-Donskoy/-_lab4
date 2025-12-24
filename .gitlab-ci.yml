@@ -7,8 +7,7 @@ stages:
 
 variables:
   APP_NAME: "flask-cicd-app"
-  DOCKER_IMAGE: "/:"
-
+  DOCKER_IMAGE: "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}"
 # 1. Тестирование приложения
 run-tests:
   stage: test
