@@ -1,0 +1,85 @@
+﻿# Лабораторная работа №4: CI/CD Pipeline
+
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  APP_NAME: "flask-cicd-app"
+  DOCKER_IMAGE: "/:"
+
+# 1. Тестирование приложения
+run-tests:
+  stage: test
+  image: python:3.12
+  script:
+    - echo "Установка зависимостей для тестирования"
+    - pip install -r requirements.txt
+    - echo "Запуск unit-тестов"
+    - python -m pytest tests/ --junitxml=test-report.xml
+    - echo "Тесты успешно пройдены"
+  artifacts:
+    reports:
+      junit: test-report.xml
+    paths:
+      - requirements.txt
+    expire_in: 1 week
+
+# 2. Сборка Docker образа
+build-docker:
+  stage: build
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  before_script:
+    - docker info
+  script:
+    - echo "Сборка Docker образа"
+    - docker build -t  .
+    - echo "Docker образ успешно собран: "
+  artifacts:
+    paths:
+      - Dockerfile
+  only:
+    - main
+  tags:
+    - docker
+  dependencies:
+    - run-tests
+
+# 3. Публикация в GitLab Container Registry
+publish-to-registry:
+  stage: deploy
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  before_script:
+    - echo "Аутентификация в GitLab Container Registry"
+    - docker login -u  -p  
+  script:
+    - echo "Публикация Docker образа в Registry"
+    - docker push 
+    - echo "Образ опубликован: "
+  only:
+    - main
+  tags:
+    - docker
+  dependencies:
+    - build-docker
+  when: manual
+
+# 4. Деплой приложения (симуляция)
+deploy-app:
+  stage: deploy
+  script:
+    - echo "Развертывание приложения из образа: "
+    - echo "Статус: ГОТОВО К РАЗВЕРТЫВАНИЮ"
+    - echo "Для деплоя выполните: docker run -p 5000:5000 "
+  environment:
+    name: production
+    url: http://example.com
+  only:
+    - main
+  dependencies:
+    - publish-to-registry
